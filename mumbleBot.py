@@ -30,4 +30,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ssl_sock = ssl.wrap_socket(s, ca_certs="./", cert_reqs=ssl.CERT_REQUIRED)
 ssl_sock.connect("localhost", 64738)
 
+ssl_sock.write("test")
+
 ssl_sock.close()
+
