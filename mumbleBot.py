@@ -25,6 +25,7 @@ except:
 
 
 headerFormat=">HI"
+headerFormat_data=">BBBB"
 messageLookupMessage={Mumble_pb2.Version:0,Mumble_pb2.UDPTunnel:1,Mumble_pb2.Authenticate:2,Mumble_pb2.Ping:3,Mumble_pb2.Reject:4,Mumble_pb2.ServerSync:5,
         Mumble_pb2.ChannelRemove:6,Mumble_pb2.ChannelState:7,Mumble_pb2.UserRemove:8,Mumble_pb2.UserState:9,Mumble_pb2.BanList:10,Mumble_pb2.TextMessage:11,Mumble_pb2.PermissionDenied:12,
         Mumble_pb2.ACL:13,Mumble_pb2.QueryUsers:14,Mumble_pb2.CryptSetup:15,Mumble_pb2.ContextActionAdd:16,Mumble_pb2.ContextAction:17,Mumble_pb2.UserList:18,Mumble_pb2.VoiceTarget:19,
@@ -119,6 +120,8 @@ class connexionMumble():
         self.socketLock=thread.allocate_lock()
         self.threadName="main thread"
         self.endBot = False
+        self.readMusicOn = False
+        self.file = open('..\Feather.opus', 'r')
 
 
     def connexion(self):
@@ -136,21 +139,53 @@ class connexionMumble():
 
         ## AUTHENTIFICATION ##
         pbMess = Mumble_pb2.Authenticate()
-        pbMess.username="Yuriubotlolz"
-        pbMess.password="derp"
+        pbMess.username=self.nickname
+        pbMess.password=self.password
         messageToSend = self.packageMessageForSending(messageLookupMessage[type(pbMess)], pbMess.SerializeToString())
         self.socket.send(messageToSend)
 
-        ## CRYPT SETUP ##
-        #pbMess = Mumble_pb2.CryptSetup()
+
+
+    def decodePDSInt(self,m,si=0):
+        v = ord(m[si])
+        if ((v & 0x80) == 0x00):
+            return ((v & 0x7F),1)
+        elif ((v & 0xC0) == 0x80):
+            return ((v & 0x4F) << 8 | ord(m[si+1]),2)
+        elif ((v & 0xF0) == 0xF0):
+            if ((v & 0xFC) == 0xF0):
+                return (ord(m[si+1]) << 24 | ord(m[si+2]) << 16 | ord(m[si+3]) << 8 | ord(m[si+4]),5)
+            elif ((v & 0xFC) == 0xF4):
+                return (ord(m[si+1]) << 56 | ord(m[si+2]) << 48 | ord(m[si+3]) << 40 | ord(m[si+4]) << 32 | ord(m[si+5]) << 24 | ord(m[si+6]) << 16 | ord(m[si+7]) << 8 | ord(m[si+8]),9)
+            elif ((v & 0xFC) == 0xF8):
+                result,length=decodePDSInt(m,si+1)
+                return(-result,length+1)
+            elif ((v & 0xFC) == 0xFC):
+                return (-(v & 0x03),1)
+            else:
+                print time.strftime("%a, %d %b %Y %H:%M:%S +0000"),"Help Help, out of cheese :("
+                sys.exit(1)
+        elif ((v & 0xF0) == 0xE0):
+            return ((v & 0x0F) << 24 | ord(m[si+1]) << 16 | ord(m[si+2]) << 8 | ord(m[si+3]),4)
+        elif ((v & 0xE0) == 0xC0):
+            return ((v & 0x1F) << 16 | ord(m[si+1]) << 8 | ord(m[si+2]),3)
+        else:
+            print time.strftime("%a, %d %b %Y %H:%M:%S +0000"),"out of cheese?"
+            sys.exit(1)    
 
         
-
-
-
     def packageMessageForSending(self,msgType,stringMessage):
         length=len(stringMessage)
         return struct.pack(headerFormat,msgType,length)+stringMessage
+
+    def packageDataForSending(self, stringMessage):
+        total_length=len(stringMessage)
+        length=total_length
+        value = self.packageMessageForSending(1, struct.pack(headerFormat_data, 0x0, 0x0, 0x0, 0xFF)+ 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa') #stringMessage
+        print value
+        return value
+        #while length=!0:
+
 
     def readTotally(self, size):
         message=""
@@ -182,6 +217,15 @@ class connexionMumble():
             message=self.parseMessage(msgType, stringMessage)
             if message.message=='!stop':
                 self.endBot=True
+            if message.message=='!music':
+                test = 1
+                self.playMusic()
+        #Type 1 = Data
+        if msgType==1:
+            test = stringMessage
+            session,sessLen=self.decodePDSInt(stringMessage,1)
+            #print stringMessage
+            #print sessLen
 
 
     def parseMessage(self,msgType,stringMessage):
@@ -190,9 +234,14 @@ class connexionMumble():
         message.ParseFromString(stringMessage)
         return message
 
+    def playMusic(self):
+        while True:
+            self.socket.send(self.packageDataForSending('test'))
+
+
     def run(self):
         self.timedWatcher = timedWatcher(self.plannedPackets,self.socketLock,self.socket)
-        self.timedWatcher.start()
+        #self.timedWatcher.start()
         print time.strftime("%a, %d %b %Y %H:%M:%S +0000"),self.threadName,"started timed watcher",self.timedWatcher.threadName
 
         sockFD=self.socket.fileno()
@@ -209,7 +258,7 @@ class connexionMumble():
 
 def main():
 
-    bot=connexionMumble('localhost', 64738, 'Yuriu', 'Channel1', 'derp')
+    bot=connexionMumble('localhost', 64738, 'a', 'Channel1', 'derp')
     pp=bot.plannedPackets
     bot.connexion()
     bot.run()
