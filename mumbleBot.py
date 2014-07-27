@@ -10,6 +10,7 @@ import threading
 import collections
 import time
 import select
+from varint_2 import *
 
 try:
     import ssl
@@ -25,7 +26,7 @@ except:
 
 
 headerFormat=">HI"
-headerFormat_data=">BBBB"
+headerFormat_data=">BBB"
 messageLookupMessage={Mumble_pb2.Version:0,Mumble_pb2.UDPTunnel:1,Mumble_pb2.Authenticate:2,Mumble_pb2.Ping:3,Mumble_pb2.Reject:4,Mumble_pb2.ServerSync:5,
         Mumble_pb2.ChannelRemove:6,Mumble_pb2.ChannelState:7,Mumble_pb2.UserRemove:8,Mumble_pb2.UserState:9,Mumble_pb2.BanList:10,Mumble_pb2.TextMessage:11,Mumble_pb2.PermissionDenied:12,
         Mumble_pb2.ACL:13,Mumble_pb2.QueryUsers:14,Mumble_pb2.CryptSetup:15,Mumble_pb2.ContextActionAdd:16,Mumble_pb2.ContextAction:17,Mumble_pb2.UserList:18,Mumble_pb2.VoiceTarget:19,
@@ -122,6 +123,7 @@ class connexionMumble():
         self.endBot = False
         self.readMusicOn = False
         self.file = open('..\Feather.opus', 'r')
+        self.debug = 0
 
 
     def connexion(self):
@@ -176,15 +178,19 @@ class connexionMumble():
         
     def packageMessageForSending(self,msgType,stringMessage):
         length=len(stringMessage)
+        print length
         return struct.pack(headerFormat,msgType,length)+stringMessage
 
-    def packageDataForSending(self, stringMessage):
+    def packageDataForSending(self, stringMessage, sequence, nbFrame):
         total_length=len(stringMessage)
         length=total_length
-        value = self.packageMessageForSending(1, struct.pack(headerFormat_data, 0x0, 0x0, 0x0, 0xFF)+ 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa') #stringMessage
-        print value
-        return value
-        #while length=!0:
+        session_varint = encode_varint(0)
+        sequence_varint =  encode_varint(int(sequence))
+        if nbFrame==8:
+            header=0xFF
+        else:
+            header=0x7F
+        return struct.pack(headerFormat_data, 0x0, 0, header) + stringMessage
 
 
     def readTotally(self, size):
@@ -206,6 +212,9 @@ class connexionMumble():
         if msgType==5:
             message=self.parseMessage(msgType,stringMessage)
             self.session=message.session
+            self.debug=1
+            print 'debug'
+            #self.playMusic()
         #Type 7 = ChannelState
         if msgType==7:
             message=self.parseMessage(msgType,stringMessage) 
@@ -219,14 +228,14 @@ class connexionMumble():
                 self.endBot=True
             if message.message=='!music':
                 test = 1
-                self.playMusic()
+                while True:
+                    self.playMusic()
         #Type 1 = Data
         if msgType==1:
             test = stringMessage
             session,sessLen=self.decodePDSInt(stringMessage,1)
             #print stringMessage
             #print sessLen
-
 
     def parseMessage(self,msgType,stringMessage):
         msgClass=messageLookupNumber[msgType]
@@ -235,13 +244,25 @@ class connexionMumble():
         return message
 
     def playMusic(self):
-        while True:
-            self.socket.send(self.packageDataForSending('test'))
-
+        data = self.file.read(127)
+        sequence = 0
+        counter = 0
+        message = ''
+        while len(data) != 0:
+            sequence = (sequence+8)
+            message += self.packageDataForSending(data, sequence, counter)
+            data = self.file.read(127)
+            counter = (counter + 1)%8
+            if counter == 0:
+                 to_send = self.packageMessageForSending(1, message)
+                 self.socket.send(to_send)
+                 message=''
+        self.file.close()
+        self.file = open('..\Feather.opus', 'r')
 
     def run(self):
         self.timedWatcher = timedWatcher(self.plannedPackets,self.socketLock,self.socket)
-        #self.timedWatcher.start()
+        self.timedWatcher.start()
         print time.strftime("%a, %d %b %Y %H:%M:%S +0000"),self.threadName,"started timed watcher",self.timedWatcher.threadName
 
         sockFD=self.socket.fileno()
@@ -258,7 +279,7 @@ class connexionMumble():
 
 def main():
 
-    bot=connexionMumble('localhost', 64738, 'a', 'Channel1', 'derp')
+    bot=connexionMumble('thehoplounge', 64738, 'SWAGGY DOGGY', 'Channel1', 'herpderp')
     pp=bot.plannedPackets
     bot.connexion()
     bot.run()
