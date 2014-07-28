@@ -122,8 +122,11 @@ class connexionMumble():
         self.threadName="main thread"
         self.endBot = False
         self.readMusicOn = False
-        self.file = open('..\Feather.opus', 'r')
+        self.file = open('..\Feather.opus', 'rb') #Test 'rb' instead of 'r' ; b => open the file in binary mode
         self.debug = 0
+        self.codecAlpha = None
+        self.codecBeta = None
+        self.userList = []
 
 
     def connexion(self):
@@ -135,7 +138,7 @@ class connexionMumble():
         pbMess.release="1.2.0"
         pbMess.version=66048
         pbMess.os=platform.system()
-        pbMess.os_version="YURIUBOTISBACK"
+        pbMess.os_version="O GRAND TSAT"
         messageToSend = self.packageMessageForSending(messageLookupMessage[type(pbMess)], pbMess.SerializeToString())        
         self.socket.send(messageToSend)
 
@@ -227,6 +230,7 @@ class connexionMumble():
         #Type 9 = UserState
         if msgType==9:
             message=self.parseMessage(msgType,stringMessage)
+            self.userList.append(message)
         #Type 11 = TextMessage
         if msgType==11:
             message=self.parseMessage(msgType, stringMessage)
@@ -236,6 +240,12 @@ class connexionMumble():
                 test = 1
                 #while True:
                 self.playMusic()
+        #Type 21 = CodecVersion
+        if msgType==21:
+            message=self.parseMessage(msgType, stringMessage)
+            self.codecAlpha = message.alpha
+            self.codecBeta  = message.beta
+            print 'Version of Opus alpha : ' + self.codecAlpha
         #Type 1 = Data
         if msgType==1:
             test = stringMessage
