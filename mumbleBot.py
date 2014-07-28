@@ -189,11 +189,14 @@ class connexionMumble():
         print 'Debug : '
         print 'Type(sequence) : ' + type(sequence)
         print 'Type(sequence_varint) : ' + type(sequence)
-        if nbFrame==8:
+        if nbFrame==7:
             header=0xFF
         else:
             header=0x7F
+#        if sequence%7==0:
         return struct.pack(headerFormat_data, 0x0, ord(sequence_varint), header) + stringMessage
+#        else:
+#            return chr(header) + stringMessage
 
 
     def readTotally(self, size):
@@ -252,10 +255,10 @@ class connexionMumble():
         counter = 0
         message = ''
         while len(data) != 0:
-            sequence = (sequence+8)
+            sequence = (sequence+7)
             message += self.packageDataForSending(data, sequence, counter)
             data = self.file.read(127)
-            counter = (counter + 1)%8
+            counter = (counter + 1)%7
             if counter == 0:
                  to_send = self.packageMessageForSending(1, message)
                  self.socket.send(to_send)
