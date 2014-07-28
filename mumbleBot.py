@@ -218,8 +218,8 @@ class connexionMumble():
         if msgType==5:
             message=self.parseMessage(msgType,stringMessage)
             self.session=message.session
-            self.debug=1
-            print 'debug'
+            #self.debug=1
+            #print 'debug'
             #self.playMusic()
         #Type 7 = ChannelState
         if msgType==7:
@@ -234,8 +234,8 @@ class connexionMumble():
                 self.endBot=True
             if message.message=='!music':
                 test = 1
-                while True:
-                    self.playMusic()
+                #while True:
+                self.playMusic()
         #Type 1 = Data
         if msgType==1:
             test = stringMessage
@@ -254,17 +254,23 @@ class connexionMumble():
         sequence = 0
         counter = 0
         message = ''
+        total = len(data)
+        debug = 0
         while len(data) != 0:
             sequence = (sequence+7)
             message += self.packageDataForSending(data, sequence, counter)
             data = self.file.read(127)
+            total += len(data)
+            debug += 1
+            print 'Lecture numero '+debug+' : taille lue = '+len(data)
             counter = (counter + 1)%7
             if counter == 0:
                  to_send = self.packageMessageForSending(1, message)
                  self.socket.send(to_send)
                  message=''
         self.file.close()
-        self.file = open('..\Feather.opus', 'r')
+        print 'Taille totale lue = ' + total
+        #self.file = open('..\Feather.opus', 'r')
 
     def run(self):
         self.timedWatcher = timedWatcher(self.plannedPackets,self.socketLock,self.socket)
