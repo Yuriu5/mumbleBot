@@ -185,12 +185,15 @@ class connexionMumble():
         total_length=len(stringMessage)
         length=total_length
         session_varint = encode_varint(0)
-        sequence_varint =  encode_varint(int(sequence))
+        sequence_varint =  encode_varint(sequence)
+        print 'Debug : '
+        print 'Type(sequence) : ' + type(sequence)
+        print 'Type(sequence_varint) : ' + type(sequence)
         if nbFrame==8:
             header=0xFF
         else:
             header=0x7F
-        return struct.pack(headerFormat_data, 0x0, 0, header) + stringMessage
+        return struct.pack(headerFormat_data, 0x0, ord(sequence_varint), header) + stringMessage
 
 
     def readTotally(self, size):
