@@ -285,7 +285,7 @@ class connexionMumble():
 
 def main():
 
-    bot=connexionMumble('thehoplounge', 64738, 'SWAGGY DOGGY', 'Channel1', 'herpderp')
+    bot=connexionMumble('localhost', 64738, 'SWAGGY DOGGY', 'Channel1', 'derp')
     pp=bot.plannedPackets
     bot.connexion()
     bot.run()
