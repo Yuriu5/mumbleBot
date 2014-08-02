@@ -26,7 +26,8 @@ except:
 
 
 headerFormat=">HI"
-headerFormat_data=">BBB"
+headerFormat_data1=">3B"
+headerFormat_data2=">4B"
 messageLookupMessage={Mumble_pb2.Version:0,Mumble_pb2.UDPTunnel:1,Mumble_pb2.Authenticate:2,Mumble_pb2.Ping:3,Mumble_pb2.Reject:4,Mumble_pb2.ServerSync:5,
         Mumble_pb2.ChannelRemove:6,Mumble_pb2.ChannelState:7,Mumble_pb2.UserRemove:8,Mumble_pb2.UserState:9,Mumble_pb2.BanList:10,Mumble_pb2.TextMessage:11,Mumble_pb2.PermissionDenied:12,
         Mumble_pb2.ACL:13,Mumble_pb2.QueryUsers:14,Mumble_pb2.CryptSetup:15,Mumble_pb2.ContextActionAdd:16,Mumble_pb2.ContextAction:17,Mumble_pb2.UserList:18,Mumble_pb2.VoiceTarget:19,
@@ -122,7 +123,7 @@ class connexionMumble():
         self.threadName="main thread"
         self.endBot = False
         self.readMusicOn = False
-        self.file = open('..\Feather.opus', 'r')
+        self.file = open('..\Feather_48.opus', 'rb')
         self.debug = 0
 
 
@@ -178,7 +179,7 @@ class connexionMumble():
         
     def packageMessageForSending(self,msgType,stringMessage):
         length=len(stringMessage)
-        print length
+       # print length
         return struct.pack(headerFormat,msgType,length)+stringMessage
 
     def packageDataForSending(self, stringMessage, sequence, nbFrame):
@@ -186,17 +187,22 @@ class connexionMumble():
         length=total_length
         session_varint = encode_varint(0)
         sequence_varint =  encode_varint(sequence)
-        print 'Debug : '
-        print 'Type(sequence) : ' + type(sequence)
-        print 'Type(sequence_varint) : ' + type(sequence)
+       # print 'Debug : '
+       # print 'Type(sequence) : ' + str(type(sequence))
+       # print 'Type(sequence_varint) : ' + str(type(sequence))
+       # print str(sequence)
+       # print len(sequence_varint)
         if nbFrame==7:
             header=0xFF
         else:
-            header=0x7F
-#        if sequence%7==0:
-        return struct.pack(headerFormat_data, 0x0, ord(sequence_varint), header) + stringMessage
-#        else:
-#            return chr(header) + stringMessage
+            header=0xFE
+        #if sequence%7==0:
+        if len(sequence_varint) == 1:
+            return struct.pack(headerFormat_data1, 0x00, ord(sequence_varint), 0xFE) + stringMessage
+        else:
+            return struct.pack(headerFormat_data2, 0x00, ord(sequence_varint[0:1]),ord(sequence_varint[1:2]), 0xFE) + stringMessage
+        #else:
+        #    return chr(header) + stringMessage
 
 
     def readTotally(self, size):
@@ -257,19 +263,22 @@ class connexionMumble():
         total = len(data)
         debug = 0
         while len(data) != 0:
-            sequence = (sequence+7)
-            message += self.packageDataForSending(data, sequence, counter)
+            time.sleep(0.015875)
+            sequence = (sequence+1)
+            #message += self.packageDataForSending(data, sequence, counter)
+            message = self.packageDataForSending(data, sequence, counter)
             data = self.file.read(127)
             total += len(data)
             debug += 1
-            print 'Lecture numero '+debug+' : taille lue = '+len(data)
+            #print 'Lecture numero '+str(debug)+' : taille lue = '+str(len(data))
             counter = (counter + 1)%7
-            if counter == 0:
-                 to_send = self.packageMessageForSending(1, message)
-                 self.socket.send(to_send)
-                 message=''
+            #if counter == 0:
+            to_send = self.packageMessageForSending(1, message)
+            self.socket.send(to_send)
+            #message=''
+        print self.file.tell()
         self.file.close()
-        print 'Taille totale lue = ' + total
+        print 'Taille totale lue = ' + str(total)
         #self.file = open('..\Feather.opus', 'r')
 
     def run(self):
@@ -291,7 +300,7 @@ class connexionMumble():
 
 def main():
 
-    bot=connexionMumble('localhost', 64738, 'SWAGGY DOGGY', 'Channel1', 'derp')
+    bot=connexionMumble('localhost', 64738, 'SWAGGY', 'Channel1', 'derp')
     pp=bot.plannedPackets
     bot.connexion()
     bot.run()
